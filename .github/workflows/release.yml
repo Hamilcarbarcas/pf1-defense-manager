@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Update download URL in module.json
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          jq --arg v "$VERSION" \
+             --arg dl "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/module.zip" \
+             '.version = $v | .download = $dl' \
+             module.json > module.json.tmp
+          mv module.json.tmp module.json
+
+      - name: Package module
+        run: zip -r module.zip module.json src/ lang/
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          awk -v ver="$VERSION" '
+            index($0, "## [" ver "]") == 1 { flag=1; next }
+            index($0, "## [") == 1 { flag=0 }
+            flag { print }
+          ' CHANGELOG.md > RELEASE_BODY.md
+          if [ ! -s RELEASE_BODY.md ]; then
+            echo "::error::No CHANGELOG.md section found for version $VERSION"
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "v${{ steps.version.outputs.version }}"
+          body_path: RELEASE_BODY.md
+          files: |
+            module.json
+            module.zip
