@@ -1,0 +1,197 @@
+/* pf1-defense-manager styles */
+
+/* No margin on the wrapper: the Advanced tab stacks several injected sections, and every
+   other one butts flush against its neighbour so the `.form-header` grooves read as a single
+   divider. A margin here opens an 8px gap that looks like it belongs to the section above. */
+
+.defense-manager-section .form-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Collapsible section: the header's shield icon doubles as the disclosure
+   control — full strength when open, dimmed when closed. */
+.defense-manager-section .dm-collapse-header {
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 120ms ease;
+}
+
+.defense-manager-section.dm-collapsed .dm-collapse-header {
+  opacity: 0.55;
+}
+
+.defense-manager-section .dm-collapse-header:hover {
+  opacity: 1;
+}
+
+.defense-manager-section .dm-collapse-badge {
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 1.6em;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--color-underline-header, #782e22);
+  color: #fff;
+  font-size: var(--font-size-11, 11px);
+  font-weight: normal;
+  text-align: center;
+}
+
+/* Tab strip — one tab per defense, plus a trailing "+" tab. */
+.defense-manager-section .dm-tabs {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: flex-end;
+  gap: 0.15rem;
+  margin: 0.35rem 0 0;
+  border-bottom: 1px solid var(--color-border-light-tertiary, #bbb);
+}
+
+.defense-manager-section .dm-tab {
+  flex: 0 0 auto;
+  max-width: 14em;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--color-border-light-tertiary, #bbb);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: rgba(0, 0, 0, 0.05);
+  font-size: var(--font-size-12, 12px);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.defense-manager-section .dm-tab.active {
+  background: var(--color-bg, rgba(0, 0, 0, 0));
+  font-weight: bold;
+  margin-bottom: -1px; /* sit over the strip's bottom border */
+  border-bottom: 1px solid var(--color-bg, transparent);
+}
+
+.defense-manager-section .dm-tab.dm-tab-disabled .dm-tab-label {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.defense-manager-section .dm-tab-add {
+  padding: 0.1rem 0.45rem;
+  font-weight: bold;
+}
+
+/* Panels — only the active one is shown. */
+.defense-manager-section .dm-panel {
+  display: none;
+  margin-top: 0.35rem;
+}
+
+.defense-manager-section .dm-panel.active {
+  display: block;
+}
+
+.defense-manager-section .dm-panel .dm-enable {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: var(--font-size-12, 12px);
+  font-weight: normal;
+}
+
+/* DR's paired bypass selects sit either side of the and/or operator. */
+.defense-manager-section .dm-detail {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.defense-type-select,
+.defense-detail-select,
+.defense-operator-select {
+  font-size: 11px;
+  height: 24px;
+  padding: 0 2px;
+}
+
+.defense-dr-type { flex: 1; min-width: 0; }
+.defense-detail-select { flex: 1; min-width: 0; }
+.defense-operator-select { flex: 0 0 48px; }
+
+.defense-amount-input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  text-align: left;
+  font-size: 11px;
+  padding: 0 4px;
+}
+
+.defense-manager-section .dm-amount-note {
+  margin: 2px 0 0;
+}
+
+/* Critical immunity's panel is the note — it has no fields of its own — so it gets a little more
+   room and a left rule than the amount hint, which sits under a control. */
+.defense-manager-section .dm-critimm-note {
+  margin: 6px 0 0;
+  padding: 4px 6px;
+  border-left: 3px solid var(--color-border-light-tertiary, #7a7971);
+  background: rgba(0, 0, 0, 0.04);
+  line-height: 1.4;
+}
+
+/* Condition immunity: tag list on the left, the picker's pencil on the right, mirroring the
+   actor sheet's own condition immunity row. */
+.defense-manager-section .dm-ci-group {
+  align-items: flex-start;
+}
+
+.defense-manager-section .dm-ci-tags {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.defense-manager-section .dm-ci-none {
+  list-style: none;
+  font-style: italic;
+  font-size: var(--font-size-11, 11px);
+  color: var(--color-text-dark-secondary, #888);
+}
+
+.defense-manager-section .dm-ci-edit {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  cursor: pointer;
+}
+
+.defense-manager-section .dm-ci-note {
+  margin: 6px 0 0;
+  padding: 4px 6px;
+  border-left: 3px solid var(--color-border-light-tertiary, #7a7971);
+  background: rgba(0, 0, 0, 0.04);
+  line-height: 1.4;
+}
+
+.defense-manager-section .dm-entry-actions {
+  margin-top: 0.25rem;
+}
+
+.defense-manager-section .dm-entry-delete {
+  cursor: pointer;
+  font-size: var(--font-size-12, 12px);
+  color: var(--color-text-dark-secondary, #666);
+  opacity: 0.75;
+}
+
+.defense-manager-section .dm-entry-delete:hover {
+  color: #c00;
+  opacity: 1;
+}
+
+.defense-manager-section .dm-empty {
+  font-style: italic;
+  color: var(--color-text-dark-secondary, #888);
+  font-size: 11px;
+  margin: 6px 0 0;
+}

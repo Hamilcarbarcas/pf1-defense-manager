@@ -1,0 +1,42 @@
+{
+  "id": "pf1-defense-manager",
+  "title": "PF1 Defense Manager",
+  "description": "Manage energy resistances, damage reductions, damage immunities, hardness, and damage vulnerabilities for PF1 actors.",
+  "authors": [
+    {
+      "name": "Hamilcarbarcas",
+      "flags": {}
+    }
+  ],
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "pf1",
+        "type": "system"
+      }
+    ]
+  },
+  "esmodules": [
+    "src/scripts/defense-manager.mjs"
+  ],
+  "styles": [
+    "src/styles/defense-manager.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "url": "https://github.com/Hamilcarbarcas/pf1-defense-manager",
+  "readme": "https://github.com/Hamilcarbarcas/pf1-defense-manager/blob/main/README.md",
+  "bugs": "https://github.com/Hamilcarbarcas/pf1-defense-manager/issues",
+  "manifest": "https://github.com/Hamilcarbarcas/pf1-defense-manager/releases/latest/download/module.json",
+  "download": "https://github.com/Hamilcarbarcas/pf1-defense-manager/releases/download/v1.0.0/module.zip"
+}

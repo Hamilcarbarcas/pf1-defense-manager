@@ -1,0 +1,155 @@
+{{!-- Defense Manager: Item Defense Entries.
+
+      One tab per defense, plus a trailing "+" tab that adds one. The active tab
+      is applied by the wiring in defense-manager.mjs (transient UI state on the
+      sheet app, never persisted), as are the live tab labels. --}}
+<div class="defense-manager-section">
+  <h3 class="form-header dm-header">
+    <i class="fa-solid fa-shield-halved"></i>
+    {{localize "DM.Section.Title"}}
+  </h3>
+
+  {{!-- Everything below the header collapses as one block; the header's own
+        icon is the toggle (see the collapse wiring in defense-manager.mjs). --}}
+  <div class="dm-body">
+    <nav class="dm-tabs">
+      {{#each defenses}}
+      <a class="dm-tab{{#unless this.enabled}} dm-tab-disabled{{/unless}}" data-index="{{@index}}">
+        <span class="dm-tab-label">{{this.label}}</span>
+      </a>
+      {{/each}}
+      <a class="dm-tab dm-tab-add" title="{{localize "DM.Control.Add"}}"><i class="fa-solid fa-plus"></i></a>
+    </nav>
+
+    {{#unless defenses.length}}
+    <p class="notes dm-empty">{{localize "DM.Empty"}}</p>
+    {{/unless}}
+
+    {{#each defenses}}
+    <div class="dm-panel" data-index="{{@index}}">
+      <div class="form-group">
+        <label>{{localize "DM.Field.Name"}}</label>
+        <div class="form-fields">
+          <input type="text" data-dm="name" data-index="{{@index}}" value="{{this.name}}"
+                 placeholder="{{localize "DM.Field.NamePlaceholder"}}" autocomplete="off" />
+          <label class="checkbox dm-enable">
+            <input type="checkbox" data-dm="enabled" data-index="{{@index}}" {{#if this.enabled}}checked{{/if}} />
+            {{localize "DM.Field.Enable"}}
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>{{localize "DM.Col.Type"}}</label>
+        <div class="form-fields">
+          <select data-dm="type" data-index="{{@index}}" class="defense-type-select">
+            <option value="dr" {{#if (eq category "dr")}}selected{{/if}}>{{localize "DM.Category.Dr"}}</option>
+            <option value="eres" {{#if (eq category "eres")}}selected{{/if}}>{{localize "DM.Category.Eres"}}</option>
+            <option value="di" {{#if (eq category "di")}}selected{{/if}}>{{localize "DM.Category.Di"}}</option>
+            <option value="dv" {{#if (eq category "dv")}}selected{{/if}}>{{localize "DM.Category.Dv"}}</option>
+            <option value="hardness" {{#if (eq category "hardness")}}selected{{/if}}>{{localize "DM.Category.Hardness"}}</option>
+            <option value="critimm" {{#if (eq category "critimm")}}selected{{/if}}>{{localize "DM.Category.CritImm"}}</option>
+            <option value="ci" {{#if (eq category "ci")}}selected{{/if}}>{{localize "DM.Category.Ci"}}</option>
+          </select>
+        </div>
+      </div>
+
+      {{!-- Critical immunity asks for nothing: it is a designation, not a quantity. All it needs
+            is a note saying what it does, since the effect is split between a native trait and
+            an API other modules read. --}}
+      {{#if isCritImmunity}}
+      <p class="notes dm-critimm-note">{{localize "DM.Field.CritImmNote"}}</p>
+      {{/if}}
+
+      {{!-- Condition immunity: the chosen conditions as tags plus the pencil that opens the
+            system's own picker, laid out the way the actor sheet lays out the same trait. --}}
+      {{#if isConditionImmunity}}
+      <div class="form-group dm-ci-group">
+        <label>{{localize "DM.Field.Conditions"}}</label>
+        <ul class="traits-list tag-list dm-ci-tags">
+          {{#each conditionTags}}
+          <li class="tag">{{label}}</li>
+          {{/each}}
+          {{#unless conditionTags.length}}
+          <li class="dm-ci-none">{{localize "DM.Field.CiNone"}}</li>
+          {{/unless}}
+        </ul>
+        <a class="dm-ci-edit" data-index="{{@index}}" title="{{localize "DM.Control.EditConditions"}}">
+          <i class="fa-solid fa-edit fa-fw" inert></i>
+        </a>
+      </div>
+      <p class="notes dm-ci-note">{{localize "DM.Field.CiNote"}}</p>
+      {{/if}}
+
+      {{#if showTypes}}
+      <div class="form-group">
+        <label>{{#if (eq category "dr")}}{{localize "DM.Field.Bypass"}}{{else}}{{localize "DM.Field.DamageType"}}{{/if}}</label>
+        <div class="form-fields dm-detail">
+          {{#if (eq category "dr")}}
+            {{!-- DR: two bypass selects joined by an and/or operator. --}}
+            <select data-dm="types0" data-index="{{@index}}" class="defense-detail-select defense-dr-type">
+              <option value="">—</option>
+              {{#each ../drTypes}}
+              <option value="{{id}}" {{#if (eq id ../types.[0])}}selected{{/if}}>{{label}}</option>
+              {{/each}}
+            </select>
+            <select data-dm="operator" data-index="{{@index}}" class="defense-operator-select">
+              <option value="true" {{#if operator}}selected{{/if}}>{{localize "DM.Operator.Or"}}</option>
+              <option value="false" {{#unless operator}}selected{{/unless}}>{{localize "DM.Operator.And"}}</option>
+            </select>
+            <select data-dm="types1" data-index="{{@index}}" class="defense-detail-select defense-dr-type">
+              <option value="">—</option>
+              {{#each ../drTypes}}
+              <option value="{{id}}" {{#if (eq id ../types.[1])}}selected{{/if}}>{{label}}</option>
+              {{/each}}
+            </select>
+          {{else if (eq category "eres")}}
+            <select data-dm="types0" data-index="{{@index}}" class="defense-detail-select">
+              {{#each ../energyTypes}}
+              <option value="{{id}}" {{#if (eq id ../types.[0])}}selected{{/if}}>{{label}}</option>
+              {{/each}}
+            </select>
+          {{else}}
+            <select data-dm="types0" data-index="{{@index}}" class="defense-detail-select">
+              {{#each ../damageTypes}}
+              <option value="{{id}}" {{#if (eq id ../types.[0])}}selected{{/if}}>{{label}}</option>
+              {{/each}}
+            </select>
+          {{/if}}
+        </div>
+      </div>
+      {{/if}}
+
+      {{!-- Immunity / vulnerability are all-or-nothing, so no amount to enter. --}}
+      {{#if showAmount}}
+      <div class="form-group">
+        <label>{{localize "DM.Col.Amount"}}</label>
+        <div class="form-fields">
+          <input type="text" data-dm="amount" data-index="{{@index}}" value="{{amount}}"
+                 class="defense-amount-input formula" placeholder="0" autocomplete="off" />
+        </div>
+        <p class="notes dm-amount-note">{{localize "DM.Field.AmountHint"}}</p>
+      </div>
+      {{/if}}
+
+      {{#if showStacking}}
+      <div class="form-group">
+        <label>{{localize "DM.Col.Stacks"}}</label>
+        <div class="form-fields">
+          <label class="checkbox">
+            <input type="checkbox" data-dm="stacking" data-index="{{@index}}" {{#if stacking}}checked{{/if}} />
+            {{localize "DM.Field.StacksHint"}}
+          </label>
+        </div>
+      </div>
+      {{/if}}
+
+      <div class="form-group dm-entry-actions">
+        <a class="dm-entry-delete" data-index="{{@index}}" title="{{localize "DM.Control.Delete"}}">
+          <i class="fa-solid fa-trash"></i> {{localize "DM.Control.DeleteEntry"}}
+        </a>
+      </div>
+    </div>
+    {{/each}}
+  </div>
+</div>

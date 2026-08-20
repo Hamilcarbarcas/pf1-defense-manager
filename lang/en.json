@@ -1,0 +1,56 @@
+{
+  "DM.Settings.HighestDrOnly.Name": "Use Highest Applicable DR Only",
+  "DM.Settings.HighestDrOnly.Hint": "Prevents multiple DR entries from stacking during PF1 damage application. Requires reload after changing.",
+  "DM.Settings.HighestDrOnly.ReloadNotice": "PF1 Defense Manager: Reload the world for DR patch setting changes to take effect.",
+
+  "DM.Dialog.Delete.Title": "Delete Defense Entry",
+  "DM.Dialog.Delete.Content": "<p>Delete the defense <strong>{name}</strong>? This cannot be undone.</p>",
+
+  "DM.DrType.Epic": "Epic",
+  "DM.DrType.Magic": "Magic",
+
+  "DM.Section.Title": "Granted Defenses",
+  "DM.Section.Toggle": "Click to expand / collapse",
+  "DM.Col.Type": "Type",
+  "DM.Col.Detail": "Detail",
+  "DM.Col.Amount": "Amount",
+  "DM.Col.Stacks": "Stacks",
+
+  "DM.Field.Name": "Name",
+  "DM.Field.NamePlaceholder": "Defense name (optional)",
+  "DM.Field.Enable": "Enable",
+  "DM.Field.Bypass": "Bypassed By",
+  "DM.Field.DamageType": "Damage Type",
+  "DM.Field.AmountHint": "A number or a formula using actor roll data (e.g. @cl, 10 + @abilities.con.mod).",
+  "DM.Field.StacksHint": "Adds on top of other entries of the same type",
+  "DM.Field.CritImmNote": "Immune to critical hits and to precision damage (sneak attack). Precision immunity is added to the actor's Damage Immunity trait; the critical half is published for other modules to read — pf1-critical-effects marks the Critical Effect button on attack cards against this creature.",
+  "DM.Field.Conditions": "Condition Immunities",
+  "DM.Field.CiNone": "None selected",
+  "DM.Field.CiNote": "Conditions this item makes the creature immune to. They are merged with every other Condition Immunity entry on the actor and written to its Condition Immunities trait, replacing whatever was entered there by hand.",
+
+  "DM.Category.Dr": "DR",
+  "DM.Category.Eres": "Energy Resist",
+  "DM.Category.Di": "Dmg Immunity",
+  "DM.Category.Dv": "Dmg Vulnerability",
+  "DM.Category.Hardness": "Hardness",
+  "DM.Category.CritImm": "Critical Immunity",
+  "DM.Category.Ci": "Condition Immunity",
+
+  "DM.Tab.Dr": "DR",
+  "DM.Tab.Eres": "ER",
+  "DM.Tab.Di": "Immune",
+  "DM.Tab.Dv": "Vuln",
+  "DM.Tab.Hardness": "Hardness",
+  "DM.Tab.CritImm": "Crit Immunity",
+  "DM.Tab.Ci": "Cond. Immune",
+  "DM.Tab.Unset": "Defense {n}",
+
+  "DM.Operator.Or": "or",
+  "DM.Operator.And": "and",
+
+  "DM.Empty": "No defenses configured. Click + to add one.",
+  "DM.Control.Delete": "Delete",
+  "DM.Control.DeleteEntry": "Delete this defense",
+  "DM.Control.Add": "Add Defense",
+  "DM.Control.EditConditions": "Choose conditions"
+}
