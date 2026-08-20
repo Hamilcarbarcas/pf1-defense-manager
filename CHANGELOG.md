@@ -7,11 +7,7 @@
   release body. If no matching section exists, the release fails.
 -->
 
-## [Unreleased]
-
-## [1.0.0] - 2026-08-19
-
-Initial release.
+## Unreleased
 
 ### Added
 - **Defenses are authored on items, not on the actor.** A **Granted Defenses** section on the
