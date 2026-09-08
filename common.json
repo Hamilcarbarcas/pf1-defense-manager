@@ -1,0 +1,10 @@
+{
+  "dest": "src/common",
+  "vars": {
+    "PREFIX": "dm-"
+  },
+  "files": [
+    "sheet/collapse.mjs",
+    "sheet/kit.css"
+  ]
+}

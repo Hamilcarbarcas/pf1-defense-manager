@@ -25,6 +25,7 @@
     "src/scripts/defense-manager.mjs"
   ],
   "styles": [
+    "src/common/sheet/kit.css",
     "src/styles/defense-manager.css"
   ],
   "languages": [

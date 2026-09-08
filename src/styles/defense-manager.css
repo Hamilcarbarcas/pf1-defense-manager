@@ -10,35 +10,6 @@
   gap: 6px;
 }
 
-/* Collapsible section: the header's shield icon doubles as the disclosure
-   control — full strength when open, dimmed when closed. */
-.defense-manager-section .dm-collapse-header {
-  cursor: pointer;
-  user-select: none;
-  transition: opacity 120ms ease;
-}
-
-.defense-manager-section.dm-collapsed .dm-collapse-header {
-  opacity: 0.55;
-}
-
-.defense-manager-section .dm-collapse-header:hover {
-  opacity: 1;
-}
-
-.defense-manager-section .dm-collapse-badge {
-  flex: 0 0 auto;
-  margin-left: auto;
-  min-width: 1.6em;
-  padding: 0 5px;
-  border-radius: 3px;
-  background: var(--color-underline-header, #782e22);
-  color: #fff;
-  font-size: var(--font-size-11, 11px);
-  font-weight: normal;
-  text-align: center;
-}
-
 /* Tab strip — one tab per defense, plus a trailing "+" tab. */
 .defense-manager-section .dm-tabs {
   display: flex;

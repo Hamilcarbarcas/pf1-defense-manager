@@ -7,6 +7,8 @@
  * them from all active items whenever defenses change.
  * ============================================================ */
 
+import { makeCollapsible } from "../common/sheet/collapse.mjs";
+
 const MODULE_ID = "pf1-defense-manager";
 const TEMPLATE_PATH = `modules/${MODULE_ID}/src/templates/defense-entries.hbs`;
 
@@ -720,48 +722,22 @@ Hooks.on("renderItemSheet", (app, html, data) => {
  *
  * Expanded state is remembered only while the sheet stays open, keyed by
  * `appId`; reopening re-applies the default of "open only if it has entries".
+ * The mechanism is the shared kit's; this wrapper only supplies the arguments.
  *
- * @type {Map<number, boolean>}
- */
-const expandedByApp = new Map();
-
-/**
  * @param {ItemSheet} app
  * @param {HTMLElement} section
  * @param {number} count Configured defense entries.
  */
 function wireCollapse(app, section, count) {
-  const header = section?.querySelector(".dm-header");
-  const body = section?.querySelector(".dm-body");
-  if (!header || !body) return;
-
-  header.classList.add("dm-collapse-header");
-  header.setAttribute("title", game.i18n.localize("DM.Section.Toggle"));
-
-  if (count > 0) {
-    const badge = document.createElement("span");
-    badge.className = "dm-collapse-badge";
-    badge.textContent = String(count);
-    header.append(badge);
-  }
-
-  let expanded = expandedByApp.get(app.appId) ?? count > 0;
-  const apply = () => {
-    section.classList.toggle("dm-collapsed", !expanded);
-    body.style.display = expanded ? "" : "none";
-  };
-  apply();
-
-  header.addEventListener("click", (ev) => {
-    if (ev.target.closest("a, button, input, select")) return;
-    ev.preventDefault();
-    expanded = !expanded;
-    expandedByApp.set(app.appId, expanded);
-    apply();
+  makeCollapsible(app, section, {
+    key: "dm",
+    marker: "dm",
+    configured: count > 0,
+    // null rather than 0, so an unconfigured section gets no badge element at all.
+    badge: count || null,
+    title: game.i18n.localize("DM.Section.Toggle"),
   });
 }
-
-Hooks.on("closeItemSheet", (app) => expandedByApp.delete(app.appId));
 
 /* ============================================================
  * Hooks — Auto Recalc
