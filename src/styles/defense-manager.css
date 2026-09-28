@@ -31,8 +31,27 @@
   font-size: var(--font-size-12, 12px);
   cursor: pointer;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+/* The label truncates, not the tab, so the delete icon is never clipped. */
+.defense-manager-section .dm-tab-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.defense-manager-section .dm-tab-delete {
+  flex: 0 0 auto;
+  font-size: 0.85em;
+  opacity: 0.4;
+}
+
+.defense-manager-section .dm-tab-delete:hover {
+  opacity: 1;
+  color: var(--color-level-error, #b60000);
 }
 
 .defense-manager-section .dm-tab.active {
@@ -142,22 +161,6 @@
   border-left: 3px solid var(--color-border-light-tertiary, #7a7971);
   background: rgba(0, 0, 0, 0.04);
   line-height: 1.4;
-}
-
-.defense-manager-section .dm-entry-actions {
-  margin-top: 0.25rem;
-}
-
-.defense-manager-section .dm-entry-delete {
-  cursor: pointer;
-  font-size: var(--font-size-12, 12px);
-  color: var(--color-text-dark-secondary, #666);
-  opacity: 0.75;
-}
-
-.defense-manager-section .dm-entry-delete:hover {
-  color: #c00;
-  opacity: 1;
 }
 
 .defense-manager-section .dm-empty {

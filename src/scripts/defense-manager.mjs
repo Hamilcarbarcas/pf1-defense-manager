@@ -682,8 +682,8 @@ Hooks.on("renderItemSheet", (app, html, data) => {
     }).render({ force: true });
   });
 
-  // Delete this defense.
-  section.find(".dm-entry-delete").on("click", async (ev) => {
+  // Delete a defense, from its tab's icon. stopPropagation keeps the tab from also switching.
+  section.find(".dm-tab-delete").on("click", async (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
     const index = Number(ev.currentTarget.dataset.index);

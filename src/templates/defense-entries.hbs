@@ -16,6 +16,7 @@
       {{#each defenses}}
       <a class="dm-tab{{#unless this.enabled}} dm-tab-disabled{{/unless}}" data-index="{{@index}}">
         <span class="dm-tab-label">{{this.label}}</span>
+        <i class="fa-solid fa-trash dm-tab-delete" data-index="{{@index}}" data-tooltip="{{localize "DM.Control.DeleteEntry"}}"></i>
       </a>
       {{/each}}
       <a class="dm-tab dm-tab-add" title="{{localize "DM.Control.Add"}}"><i class="fa-solid fa-plus"></i></a>
@@ -144,11 +145,6 @@
       </div>
       {{/if}}
 
-      <div class="form-group dm-entry-actions">
-        <a class="dm-entry-delete" data-index="{{@index}}" title="{{localize "DM.Control.Delete"}}">
-          <i class="fa-solid fa-trash"></i> {{localize "DM.Control.DeleteEntry"}}
-        </a>
-      </div>
     </div>
     {{/each}}
   </div>

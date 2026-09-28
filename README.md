@@ -32,7 +32,7 @@ A Foundry VTT module for the PF1 system that provides a unified interface for ma
 7. Configure **Bypassed By** / **Damage Type** (two selects and an and/or operator for DR; one select otherwise; none for Hardness or Critical Immunity). A **Condition Immunity** entry instead shows its conditions as tags with a pencil that opens the picker.
 8. Enter an **Amount** (number or formula). Immunities and vulnerabilities have no amount field.
 9. Check **Stacks** if this entry should stack with others of the same type.
-10. Untick **Enable** to switch an entry off without deleting it, or use **Delete this defense** at the bottom of the panel to remove it.
+10. Untick **Enable** to switch an entry off without deleting it, or click the trash icon on its tab to remove it.
 
 Defenses are applied to the actor automatically when the item is active/equipped. Which tab is open is remembered while the sheet stays open and is never saved to the item.
 
