@@ -54,3 +54,8 @@
   otherwise let several DR entries stack against one instance; with this on, only the highest
   applicable DR applies. Patched at `ready`, so changing it needs a world reload — the setting says
   so when you change it.
+
+### Fixed
+- **Adding or changing an entry in a sheet section no longer jumps the sheet back to the top of
+  the tab.** Sections from the shared sheet kit now restore the scroll position once they have
+  drawn.
