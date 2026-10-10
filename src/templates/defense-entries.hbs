@@ -3,6 +3,19 @@
       One tab per defense, plus a trailing "+" tab that adds one. The active tab
       is applied by the wiring in defense-manager.mjs (transient UI state on the
       sheet app, never persisted), as are the live tab labels. --}}
+
+{{!-- The amount row, placed above or below the type row depending on the category. --}}
+{{#*inline "dmAmount"}}
+<div class="form-group">
+  <label>{{localize "DM.Col.Amount"}}</label>
+  <div class="form-fields">
+    <input type="text" data-dm="amount" data-index="{{@index}}" value="{{amount}}"
+           class="defense-amount-input formula" placeholder="0" autocomplete="off" />
+  </div>
+  <p class="notes dm-amount-note">{{localize "DM.Field.AmountHint"}}</p>
+</div>
+{{/inline}}
+
 <div class="defense-manager-section">
   <h3 class="form-header dm-header">
     <i class="fa-solid fa-shield-halved"></i>
@@ -51,9 +64,44 @@
             <option value="hardness" {{#if (eq category "hardness")}}selected{{/if}}>{{localize "DM.Category.Hardness"}}</option>
             <option value="critimm" {{#if (eq category "critimm")}}selected{{/if}}>{{localize "DM.Category.CritImm"}}</option>
             <option value="ci" {{#if (eq category "ci")}}selected{{/if}}>{{localize "DM.Category.Ci"}}</option>
+            <option value="override" {{#if (eq category "override")}}selected{{/if}}>{{localize "DM.Category.Override"}}</option>
           </select>
         </div>
       </div>
+
+      {{!-- Defense override: which defense it weakens, and how. The choice lists are precomputed
+            per entry with `selected` already set, so nothing here reaches up a context level. --}}
+      {{#if isOverride}}
+      <div class="form-group">
+        <label>{{localize "DM.Field.Override"}}</label>
+        <div class="form-fields">
+          <select data-dm="mode" data-index="{{@index}}" class="defense-detail-select">
+            {{#each overrideModes}}
+            <option value="{{id}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+          {{#if overrideTypes.length}}
+          <select data-dm="types0" data-index="{{@index}}" class="defense-detail-select">
+            {{#each overrideTypes}}
+            <option value="{{id}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+          {{/if}}
+        </div>
+      </div>
+      <p class="notes dm-override-note">{{localize "DM.Field.OverrideNote"}}</p>
+      {{/if}}
+
+      {{#if showMax}}
+      <div class="form-group">
+        <label>{{localize "DM.Field.Max"}}</label>
+        <div class="form-fields">
+          <input type="text" data-dm="max" data-index="{{@index}}" value="{{max}}"
+                 class="defense-amount-input formula" placeholder="{{localize "DM.Field.MaxPlaceholder"}}" autocomplete="off" />
+        </div>
+        <p class="notes dm-amount-note">{{localize "DM.Field.MaxHint"}}</p>
+      </div>
+      {{/if}}
 
       {{!-- Critical immunity asks for nothing: it is a designation, not a quantity. All it needs
             is a note saying what it does, since the effect is split between a native trait and
@@ -81,6 +129,9 @@
       </div>
       <p class="notes dm-ci-note">{{localize "DM.Field.CiNote"}}</p>
       {{/if}}
+
+      {{!-- DR reads amount first, as it is written: DR 10/magic. --}}
+      {{#if amountBefore}}{{> dmAmount}}{{/if}}
 
       {{#if showTypes}}
       <div class="form-group">
@@ -121,17 +172,7 @@
       </div>
       {{/if}}
 
-      {{!-- Immunity / vulnerability are all-or-nothing, so no amount to enter. --}}
-      {{#if showAmount}}
-      <div class="form-group">
-        <label>{{localize "DM.Col.Amount"}}</label>
-        <div class="form-fields">
-          <input type="text" data-dm="amount" data-index="{{@index}}" value="{{amount}}"
-                 class="defense-amount-input formula" placeholder="0" autocomplete="off" />
-        </div>
-        <p class="notes dm-amount-note">{{localize "DM.Field.AmountHint"}}</p>
-      </div>
-      {{/if}}
+      {{#if amountAfter}}{{> dmAmount}}{{/if}}
 
       {{#if showStacking}}
       <div class="form-group">

@@ -35,6 +35,22 @@
   "DM.Category.Hardness": "Hardness",
   "DM.Category.CritImm": "Critical Immunity",
   "DM.Category.Ci": "Condition Immunity",
+  "DM.Category.Override": "Defense Override",
+
+  "DM.Field.Override": "Override",
+  "DM.Field.OverrideNote": "Weakens this creature's own defenses against every attack.",
+  "DM.Field.Max": "Maximum",
+  "DM.Field.MaxPlaceholder": "No limit",
+  "DM.Field.MaxHint": "Only defenses this high or lower are ignored. Blank for no limit.",
+
+  "DM.Override.drBypass": "DR Bypass",
+  "DM.Override.drReduce": "DR Reduction",
+  "DM.Override.erBypass": "ER Bypass",
+  "DM.Override.erReduce": "ER Reduction",
+  "DM.Override.hardnessBypass": "Hardness Bypass",
+  "DM.Override.hardnessReduce": "Hardness Reduction",
+  "DM.Override.AnyType": "Any",
+  "DM.Override.GenericDr": "DR/— only",
 
   "DM.Tab.Dr": "DR",
   "DM.Tab.Eres": "ER",
@@ -44,6 +60,9 @@
   "DM.Tab.CritImm": "Crit Immunity",
   "DM.Tab.Ci": "Cond. Immune",
   "DM.Tab.Unset": "Defense {n}",
+  "DM.Tab.OverrideBypass": "Ignore {what}",
+  "DM.Tab.OverrideBypassUpTo": "Ignore {what} up to {max}",
+  "DM.Tab.OverrideReduce": "{what} −{amount}",
 
   "DM.Operator.Or": "or",
   "DM.Operator.And": "and",

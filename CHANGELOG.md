@@ -10,6 +10,12 @@
 ## Unreleased
 
 ### Added
+- **Defense Override.** A new entry type that weakens the creature's own defenses against every
+  attack: DR, ER, or Hardness **Bypass** (ignore that defense, optionally only up to a maximum) and
+  DR, ER, or Hardness **Reduction** (lower it by an amount). A DR Bypass treats attacks as having
+  that type, so DR 10/magic and good becomes DR 10/magic, and DR 10/good or silver disappears. The
+  actor sheet and damage dialog show the weakened values. Built for a paladin's Aura of Faith,
+  shared to nearby enemies.
 - **Defenses are authored on items, not on the actor.** A **Granted Defenses** section on the
   **Advanced** tab of any buff, feat, class feature, racial trait, equipment, weapon or attack holds
   as many entries as the item needs, one tab each. The module owns the actor's native trait fields
@@ -47,13 +53,20 @@
   whether the section is expanded last as long as the sheet stays open and are never written to the
   item.
 - **Scriptable API** at `game.defenseManager` (also `game.modules.get("pf1-defense-manager").api`):
-  `add`, `remove`, `list`, `clear`, `recalc`, `isCritImmune`, `critImmunitySources`. API entries live
-  on actor flags, separate from the item-authored ones. The two crit-immunity calls accept an actor,
-  a token, or a token document.
+  `add`, `remove`, `list`, `clear`, `recalc`, `isCritImmune`, `critImmunitySources`,
+  `defenseSources`. API entries live on actor flags, separate from the item-authored ones. The
+  read-only calls accept an actor, a token, or a token document.
+- **`defenseSources()`** names the items behind each DR, ER, hardness, immunity and vulnerability
+  the actor has, worked out live without writing anything. astora-mod's Health Log uses it to
+  name the item behind each reduction in a hit's breakdown.
 - **"Use Highest Applicable DR Only"** (world setting, default on). PF1's damage application will
   otherwise let several DR entries stack against one instance; with this on, only the highest
-  applicable DR applies. Patched at `ready`, so changing it needs a world reload — the setting says
-  so when you change it.
+  applicable DR applies, and it absorbs at most its amount across the whole hit. Each entry still
+  records what it absorbed, as PF1's own math does, so damage logs can name it. Patched at
+  `ready`, so changing it needs a world reload — the setting says so when you change it.
+
+### Changed
+- A DR entry now shows **Amount** above **Bypassed By**, the order DR is written in (DR 10/magic).
 
 ### Fixed
 - **Adding or changing an entry in a sheet section no longer jumps the sheet back to the top of

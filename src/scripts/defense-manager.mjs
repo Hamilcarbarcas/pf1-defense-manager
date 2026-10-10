@@ -21,6 +21,7 @@ const TEMPLATE_PATH = `modules/${MODULE_ID}/src/templates/defense-entries.hbs`;
  *   { name: "",  enabled: true, category: "dv",   amount: "0",   types: ["cold", ""],  operator: true,  stacking: false },
  *   { name: "",  enabled: true, category: "critimm", amount: "0", types: ["", ""],     operator: true,  stacking: false },
  *   { name: "",  enabled: true, category: "ci",   conditions: ["bleed", "sleep"] },
+ *   { name: "",  enabled: true, category: "override", mode: "drBypass", types: ["good", ""], max: "", amount: "0", stacking: false },
  * ]
  *
  * `name` is an optional label for the entry's tab; blank falls back to a summary
@@ -113,6 +114,126 @@ function entryConditions(entry) {
   return Array.isArray(list) ? list.filter(Boolean) : [];
 }
 
+/* Defense overrides. DESIGN.md §1
+ *
+ * Weakens this creature's own defenses against every attack: Aura of Faith making attacks on
+ * nearby enemies count as good, a curse that lowers fire resistance. Applied at recalc by
+ * rewriting the entries this module already owns, so PF1's damage dialog needs no patching and
+ * the sheet shows what actually applies.
+ *
+ * Bypasses run before reductions, and a bypass's ceiling is compared against the defense as
+ * stacked, before any reduction.
+ */
+const OVERRIDE = "override";
+const OVERRIDE_MODES = ["drBypass", "drReduce", "erBypass", "erReduce", "hardnessBypass", "hardnessReduce"];
+
+/** Override type matching every DR or ER entry. */
+const ANY_TYPE = "*";
+/** Override type matching only untyped DR (DR/—). */
+const GENERIC_DR = "-";
+
+/** "dr" | "er" | "hardness" */
+const overrideKind = (mode) => String(mode ?? "").replace(/(Bypass|Reduce)$/, "");
+const isBypassMode = (mode) => String(mode ?? "").endsWith("Bypass");
+
+/** Does an override type select this (stacked) DR entry? */
+function drMatches(entry, type) {
+  const types = entry.types.filter(Boolean);
+  if (type === ANY_TYPE) return true;
+  if (type === GENERIC_DR) return types.length === 0;
+  return types.includes(type);
+}
+
+const erMatches = (entry, type) => type === ANY_TYPE || entry.types[0] === type;
+
+/**
+ * One DR entry after a bypass: unchanged, narrowed, or gone (null).
+ *
+ * "Ignore DR/good" means the attack counts as good, which is what PF1's dialog would decide if
+ * it really were: an "or" entry or a single-type entry falls entirely, while an "and" entry
+ * still needs its other type overcome. DR 10/magic and good becomes DR 10/magic, but
+ * DR 10/good or silver is gone, not DR 10/silver.
+ */
+function bypassDr(entry, type, max) {
+  if (entry.amount > max || !drMatches(entry, type)) return entry;
+  const types = entry.types.filter(Boolean);
+  if (type === ANY_TYPE || type === GENERIC_DR || types.length < 2 || entry.operator) return null;
+  return { ...entry, types: [types.find((t) => t !== type) ?? "", ""] };
+}
+
+/** Entries a bypass narrowed can now duplicate others; stacking already ran, so keep the highest. */
+function mergeDuplicates(entries) {
+  const byKey = new Map();
+  for (const entry of entries) {
+    const types = entry.types.filter(Boolean).sort();
+    // A single type reads the same under either operator.
+    const key = types.length < 2 ? types.join() : `${types.join()}|${entry.operator}`;
+    const prior = byKey.get(key);
+    if (!prior || entry.amount > prior.amount) byKey.set(key, entry);
+  }
+  return [...byKey.values()];
+}
+
+/** Highest ceiling per override type. A blank ceiling is no limit. */
+function ceilingsByType(overrides) {
+  const out = new Map();
+  for (const o of overrides) {
+    const type = o.types?.[0] ?? "";
+    out.set(type, Math.max(out.get(type) ?? -Infinity, o._max));
+  }
+  return out;
+}
+
+/** Reduction per override type: highest non-stacking plus every stacking one. */
+function totalsByType(overrides) {
+  const groups = new Map();
+  for (const o of overrides) {
+    const type = o.types?.[0] ?? "";
+    let g = groups.get(type);
+    if (!g) groups.set(type, (g = { best: 0, stacked: 0 }));
+    if (o.stacking) g.stacked += o._resolved;
+    else g.best = Math.max(g.best, o._resolved);
+  }
+  return new Map([...groups].map(([type, g]) => [type, g.best + g.stacked]));
+}
+
+/** Lower every matching entry by each matching reduction; entries reduced to nothing drop. */
+function reduceEach(entries, totals, matches) {
+  if (!totals.size) return entries;
+  return entries
+    .map((entry) => {
+      let amount = entry.amount;
+      for (const [type, by] of totals) if (matches(entry, type)) amount -= by;
+      return { ...entry, amount: Math.max(0, amount) };
+    })
+    .filter((entry) => entry.amount > 0);
+}
+
+function overrideDr(entries, overrides) {
+  const bypass = ceilingsByType(overrides.filter((o) => o.mode === "drBypass"));
+  let out = entries;
+  if (bypass.size) {
+    for (const [type, max] of bypass) out = out.map((e) => bypassDr(e, type, max)).filter(Boolean);
+    out = mergeDuplicates(out);
+  }
+  return reduceEach(out, totalsByType(overrides.filter((o) => o.mode === "drReduce")), drMatches);
+}
+
+function overrideEr(entries, overrides) {
+  const bypass = ceilingsByType(overrides.filter((o) => o.mode === "erBypass"));
+  let out = entries;
+  for (const [type, max] of bypass) out = out.filter((e) => !(erMatches(e, type) && e.amount <= max));
+  return reduceEach(out, totalsByType(overrides.filter((o) => o.mode === "erReduce")), erMatches);
+}
+
+function overrideHardness(value, overrides) {
+  const ceilings = [...ceilingsByType(overrides.filter((o) => o.mode === "hardnessBypass")).values()];
+  if (ceilings.length && value <= Math.max(...ceilings)) return 0;
+  let reduce = 0;
+  for (const by of totalsByType(overrides.filter((o) => o.mode === "hardnessReduce")).values()) reduce += by;
+  return Math.max(0, value - reduce);
+}
+
 /** Check if an item is "active" (should contribute defenses). */
 function isItemActive(item) {
   // Buffs: must be active
@@ -150,8 +271,31 @@ function resolveAmount(formula, rollData) {
   }
 }
 
-async function recalcDefenses(actor) {
-  if (!actor || actor.type === "vehicle") return;
+/** A bypass ceiling; blank is no limit. */
+function resolveMax(formula, rollData) {
+  const str = String(formula ?? "").trim();
+  return str ? resolveAmount(str, rollData) : Infinity;
+}
+
+/** Names granting an immunity or vulnerability, per damage type. */
+function sourcesByType(entries) {
+  const out = {};
+  for (const e of entries) {
+    const type = e.types?.[0];
+    if (!type || !e._source) continue;
+    const list = (out[type] ??= []);
+    if (!list.includes(e._source)) list.push(e._source);
+  }
+  return out;
+}
+
+/**
+ * The actor's defenses as recalc would write them, plus where each came from. Pure: reads the
+ * actor's active items and API entries, writes nothing.
+ * @returns {{ update: object, sources: object } | null}
+ */
+function buildDefenses(actor) {
+  if (!actor || actor.type === "vehicle") return null;
 
   const rollData = actor.getRollData();
 
@@ -163,14 +307,14 @@ async function recalcDefenses(actor) {
     const defs = getItemDefenses(item);
     for (const d of defs) {
       if (!isEntryEnabled(d)) continue;
-      allEntries.push({ ...d, _resolved: resolveAmount(d.amount, rollData), _source: item.name });
+      allEntries.push({ ...d, _resolved: resolveAmount(d.amount, rollData), _max: resolveMax(d.max, rollData), _source: item.name });
     }
   }
 
   // Add API defenses from actor flags
   for (const d of getApiDefenses(actor)) {
     if (!isEntryEnabled(d)) continue;
-    allEntries.push({ ...d, _resolved: resolveAmount(d.amount, rollData) });
+    allEntries.push({ ...d, _resolved: resolveAmount(d.amount, rollData), _max: resolveMax(d.max, rollData), _source: d.source || d.id });
   }
 
   // Separate by category
@@ -181,10 +325,11 @@ async function recalcDefenses(actor) {
   const hardness = allEntries.filter(e => e.category === "hardness");
   const ci = allEntries.filter(e => e.category === CONDITION_IMMUNITY);
   const critImmune = allEntries.some(e => e.category === CRIT_IMMUNITY);
+  const overrides = allEntries.filter(e => e.category === OVERRIDE);
 
-  // Apply stacking rules to DR and ER
-  const drResult = applyStackingRules(dr);
-  const eresResult = applyStackingRules(eres);
+  // Apply stacking rules to DR and ER, then weaken the result by any overrides
+  const drResult = overrideDr(applyStackingRules(dr), overrides);
+  const eresResult = overrideEr(applyStackingRules(eres), overrides);
 
   // DI/DV: just unique type sets. Critical immunity rides in as precision immunity — the Set
   // makes it idempotent, so an actor carrying both it and an explicit `di: precision` gets one.
@@ -200,7 +345,7 @@ async function recalcDefenses(actor) {
 
   // Hardness: apply stacking rules then sum to a single value
   const hardnessStacked = applyStackingRules(hardness);
-  const hardnessResult = hardnessStacked.reduce((sum, e) => sum + (e.amount ?? 0), 0);
+  const hardnessResult = overrideHardness(hardnessStacked.reduce((sum, e) => sum + (e.amount ?? 0), 0), overrides);
 
   // Build update
   const update = {
@@ -220,7 +365,28 @@ async function recalcDefenses(actor) {
   // Only character and npc carry a condition immunity trait; nothing else has one to own.
   if (actor.system.traits?.ci !== undefined) update["system.traits.ci"] = ciResult;
 
-  await actor.update(update, { [MODULE_ID]: { noRecalc: true } });
+  const traitSources = (e) => ({ amount: e.amount, types: [...e.types], operator: e.operator, sources: [...(e.sources ?? [])] });
+  const critSources = allEntries.filter((e) => e.category === CRIT_IMMUNITY && e._source).map((e) => e._source);
+  const diSources = sourcesByType(di);
+  if (critSources.length) {
+    const list = (diSources[CRIT_IMMUNITY_DI_TYPE] ??= []);
+    for (const name of critSources) if (!list.includes(name)) list.push(name);
+  }
+  const sources = {
+    dr: drResult.map(traitSources),
+    eres: eresResult.map(traitSources),
+    hardness: { amount: hardnessResult, sources: [...new Set(hardnessStacked.flatMap((e) => e.sources ?? []))] },
+    di: diSources,
+    dv: sourcesByType(dv),
+  };
+
+  return { update, sources };
+}
+
+async function recalcDefenses(actor) {
+  const built = buildDefenses(actor);
+  if (!built) return;
+  await actor.update(built.update, { [MODULE_ID]: { noRecalc: true } });
 }
 
 /**
@@ -253,10 +419,16 @@ function applyStackingRules(entries) {
     const template = group.nonStacking[0] || group.stacking[0];
     if (!template) continue;
 
+    // What contributed: the winning non-stacking entry (if any) and every stacking one.
+    const sources = [maxNonStacking, ...group.stacking]
+      .filter((e) => e._source && (e._resolved ?? e.amount) > 0)
+      .map((e) => e._source);
+
     result.push({
       amount: total,
       types: [...template.types],
       operator: template.operator,
+      sources: [...new Set(sources)],
     });
   }
 
@@ -399,9 +571,61 @@ function entryLabel(entry, index, options) {
       // left-to-right until it runs out of room.
       return picked.length ? `${head}: ${picked.join(", ")}` : head;
     }
+    case OVERRIDE:
+      return overrideLabel(entry, options);
     default:
       return fallback;
   }
+}
+
+/** "Ignore DR/good", "Ignore hardness up to 19", "ER fire −10". */
+function overrideLabel(entry, options) {
+  const kind = overrideKind(entry.mode);
+  const type = entry.types?.[0] ?? "";
+  let what;
+  if (kind === "dr") {
+    what = type === ANY_TYPE ? game.i18n.localize("DM.Tab.Dr")
+      : type === GENERIC_DR ? `${game.i18n.localize("DM.Tab.Dr")}/—`
+      : `${game.i18n.localize("DM.Tab.Dr")}/${typeLabel(type, options)}`;
+  } else if (kind === "er") {
+    what = type === ANY_TYPE ? game.i18n.localize("DM.Tab.Eres")
+      : `${game.i18n.localize("DM.Tab.Eres")} ${typeLabel(type, options)}`;
+  } else {
+    what = game.i18n.localize("DM.Tab.Hardness");
+  }
+
+  if (!isBypassMode(entry.mode)) {
+    return game.i18n.format("DM.Tab.OverrideReduce", { what, amount: String(entry.amount ?? "").trim() || 0 });
+  }
+  const max = String(entry.max ?? "").trim();
+  return max
+    ? game.i18n.format("DM.Tab.OverrideBypassUpTo", { what, max })
+    : game.i18n.format("DM.Tab.OverrideBypass", { what });
+}
+
+/** Type choices for an override's mode, with the current one marked. Hardness has none. */
+function overrideTypeChoices(entry, options) {
+  const kind = overrideKind(entry.mode);
+  const current = entry.types?.[0] ?? "";
+  let list;
+  if (kind === "dr") {
+    list = [
+      { id: ANY_TYPE, label: game.i18n.localize("DM.Override.AnyType") },
+      { id: GENERIC_DR, label: game.i18n.localize("DM.Override.GenericDr") },
+      ...options.drTypes,
+    ];
+  } else if (kind === "er") {
+    list = [{ id: ANY_TYPE, label: game.i18n.localize("DM.Override.AnyType") }, ...options.energyTypes];
+  } else {
+    return [];
+  }
+  return list.map((t) => ({ ...t, selected: t.id === current }));
+}
+
+/** Default type when an override switches to a mode. */
+function defaultOverrideType(mode) {
+  const kind = overrideKind(mode);
+  return kind === "dr" ? "magic" : kind === "er" ? "fire" : "";
 }
 
 /**
@@ -412,14 +636,25 @@ function entryLabel(entry, index, options) {
  * would have made every one of them a three-way.
  *
  * @param {string} category
+ * @param {string} [mode] Override mode, for category "override".
  */
-function panelFields(category) {
+function panelFields(category, mode) {
   const bare = category === CRIT_IMMUNITY || category === CONDITION_IMMUNITY;
+  const override = category === OVERRIDE;
+  // A bypass has a ceiling instead of an amount, and nothing to stack.
+  const bypass = override && isBypassMode(mode);
+  // Immunity / vulnerability are all-or-nothing, so no amount to enter.
+  const showAmount = category !== "di" && category !== "dv" && !bare && !bypass;
   return {
-    showTypes: category !== "hardness" && !bare,
-    showAmount: category !== "di" && category !== "dv" && !bare,
+    showTypes: category !== "hardness" && !bare && !override,
+    showAmount,
+    // DR reads amount first, as it is written: DR 10/magic.
+    amountBefore: showAmount && category === "dr",
+    amountAfter: showAmount && category !== "dr",
     // Nothing to stack: the entry is a designation or a list, not a quantity.
-    showStacking: !bare,
+    showStacking: !bare && !bypass,
+    showMax: bypass,
+    isOverride: override,
     isCritImmunity: category === CRIT_IMMUNITY,
     isConditionImmunity: category === CONDITION_IMMUNITY,
   };
@@ -502,7 +737,13 @@ Hooks.on("renderItemSheet", (app, html, data) => {
         id: c,
         label: typeOptions.conditionChoices[c] ?? c,
       })),
-      ...panelFields(d.category),
+      overrideModes: OVERRIDE_MODES.map((id) => ({
+        id,
+        label: game.i18n.localize(`DM.Override.${id}`),
+        selected: id === d.mode,
+      })),
+      overrideTypes: d.category === OVERRIDE ? overrideTypeChoices(d, typeOptions) : [],
+      ...panelFields(d.category, d.mode),
     })),
     ...typeOptions,
   };
@@ -591,8 +832,17 @@ Hooks.on("renderItemSheet", (app, html, data) => {
       case "type":
         entry.category = el.value;
         needsRender = true;
+        if (el.value !== OVERRIDE) {
+          delete entry.mode;
+          delete entry.max;
+        }
         // Reset to sensible defaults when switching category
-        if (el.value === "di" || el.value === "dv") {
+        if (el.value === OVERRIDE) {
+          entry.mode = OVERRIDE_MODES[0];
+          entry.types = [defaultOverrideType(entry.mode), ""];
+          entry.amount = "0";
+          entry.max = "";
+        } else if (el.value === "di" || el.value === "dv") {
           entry.amount = "0";
           entry.types = ["fire", ""];
         } else if (el.value === CONDITION_IMMUNITY) {
@@ -609,6 +859,15 @@ Hooks.on("renderItemSheet", (app, html, data) => {
           entry.types = ["magic", ""];
           entry.operator = true;
         }
+        break;
+      case "mode":
+        // Changes which controls the panel needs, and the type list with them.
+        entry.mode = el.value;
+        entry.types = [defaultOverrideType(el.value), ""];
+        needsRender = true;
+        break;
+      case "max":
+        entry.max = el.value;
         break;
       case "name":
         entry.name = String(el.value).trim();
@@ -641,11 +900,12 @@ Hooks.on("renderItemSheet", (app, html, data) => {
 
   // Typing in the name or amount box retitles its tab as you go; the value
   // itself is persisted on change, above.
-  section.find(".dm-panel").on("input", '[data-dm="name"], [data-dm="amount"]', (ev) => {
+  section.find(".dm-panel").on("input", '[data-dm="name"], [data-dm="amount"], [data-dm="max"]', (ev) => {
     const index = Number(ev.currentTarget.dataset.index);
     const entry = { ...getItemDefenses(item)[index] };
-    if (ev.currentTarget.dataset.dm === "name") entry.name = String(ev.currentTarget.value).trim();
-    else entry.amount = ev.currentTarget.value;
+    const field = ev.currentTarget.dataset.dm;
+    if (field === "name") entry.name = String(ev.currentTarget.value).trim();
+    else entry[field] = ev.currentTarget.value;
     section.find(`.dm-tab[data-index="${index}"] .dm-tab-label`).text(entryLabel(entry, index, typeOptions));
   });
 
@@ -812,20 +1072,29 @@ class DefenseManagerAPI {
    * @param {object} options
    * @param {string} options.id - Unique identifier for this entry
    * @param {string} options.source - Display name of the source
-   * @param {string} options.category - "dr" | "eres" | "di" | "dv" | "hardness" | "critimm" | "ci"
+   * @param {string} options.category - "dr" | "eres" | "di" | "dv" | "hardness" | "critimm" | "ci" | "override"
    * @param {string|number} [options.amount="0"] - Amount or formula (e.g. "5", "@cl", "10 + @abilities.con.mod")
-   * @param {string[]} [options.types=["",""]] - Type identifiers
+   * @param {string[]} [options.types=["",""]] - Type identifiers. For "override", `types[0]` is the
+   *   DR or energy type it targets, "*" for any, or "-" for DR/— only.
+   * @param {string} [options.mode] - For "override": "drBypass" | "drReduce" | "erBypass" | "erReduce"
+   *   | "hardnessBypass" | "hardnessReduce"
+   * @param {string|number} [options.max=""] - For a bypass override: the highest defense it ignores.
+   *   Blank is no limit.
    * @param {string[]} [options.conditions=[]] - Condition ids, for category "ci" (see pf1.config.conditionTypes).
    *   Unrecognised strings are kept as custom entries, as on the native trait.
    * @param {boolean} [options.operator=true] - true=or, false=and (for DR)
    * @param {boolean} [options.stacking=false] - Whether this stacks
    * @param {boolean} [options.enabled=true] - Set false to park the entry without removing it
    */
-  async add(actor, { id, source, category, amount = 0, types = ["", ""], conditions = [], operator = true, stacking = false, enabled = true } = {}) {
+  async add(actor, { id, source, category, amount = 0, types = ["", ""], conditions = [], operator = true, stacking = false, enabled = true, mode, max = "" } = {}) {
     if (!actor || !id || !category) throw new Error("actor, id, and category are required");
+    if (category === OVERRIDE && !OVERRIDE_MODES.includes(mode)) {
+      throw new Error(`override mode must be one of: ${OVERRIDE_MODES.join(", ")}`);
+    }
     const current = getApiDefenses(actor);
     const existing = current.findIndex(e => e.id === id);
     const entry = { id, source, category, amount, types: [...types], conditions: [...conditions], operator, stacking, enabled };
+    if (category === OVERRIDE) Object.assign(entry, { mode, max });
     if (existing >= 0) {
       current[existing] = entry;
     } else {
@@ -907,11 +1176,36 @@ class DefenseManagerAPI {
     }
     return sources;
   }
+
+  /**
+   * Which items (or API entries, by `source`) supply each defense the actor has, for a damage
+   * readout. Computed live, as recalc would, without writing anything.
+   *
+   * `dr` and `eres` match `system.traits.dr.value` / `.eres.value` by amount, types and operator.
+   * A non-stacking entry names only the one that won; stacking entries name every contributor.
+   *
+   * @param {Actor|TokenDocument|Token} actor - An actor, or anything carrying one.
+   * @returns {{
+   *   dr: { amount: number, types: string[], operator: boolean, sources: string[] }[],
+   *   eres: { amount: number, types: string[], operator: boolean, sources: string[] }[],
+   *   hardness: { amount: number, sources: string[] },
+   *   di: Record<string, string[]>,
+   *   dv: Record<string, string[]>,
+   * } | null} Null for an actor this module does not manage.
+   */
+  defenseSources(actor) {
+    const doc = actor?.documentName === "Actor" ? actor : actor?.actor ?? null;
+    return buildDefenses(doc)?.sources ?? null;
+  }
 }
 
 /**
  * PF1 system applies each active DR entry sequentially, which effectively stacks DR.
  * Patch it so only the highest applicable DR applies per damage instance.
+ *
+ * Each entry keeps one pool for the whole hit, as in vanilla: DR 10 absorbs at most 10
+ * across all instances. `available` is left on the entry as vanilla leaves it, so
+ * `value - available` is what that entry absorbed (astora-mod's health log reads it).
  */
 function patchPF1ApplyDamageDR() {
   const ApplyDamage = pf1?.applications?.ApplyDamage;
@@ -926,6 +1220,7 @@ function patchPF1ApplyDamageDR() {
 
     let total = 0;
     const active = reductions.filter((r) => r?.active && (r.value ?? 0) > 0);
+    for (const r of active) r.available = r.value;
 
     for (const instance of instances) {
       if (instance.total <= 0) continue;
@@ -937,10 +1232,7 @@ function patchPF1ApplyDamageDR() {
       }
 
       if (!best) continue;
-
-      // Use a temporary availability bucket so DR isn't accumulated from multiple entries
-      const temp = { available: best.value };
-      total += this._applyReduction(target, instance, temp, true);
+      total += this._applyReduction(target, instance, best, true);
     }
 
     return total;
