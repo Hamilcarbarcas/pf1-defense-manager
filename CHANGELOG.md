@@ -69,6 +69,10 @@
 - A DR entry now shows **Amount** above **Bypassed By**, the order DR is written in (DR 10/magic).
 
 ### Fixed
+- **Item formulas now see the item's own roll data.** An Amount such as
+  `5 + 5 * min(1, floor(@class.level / 5))` previewed correctly but granted as if `@class` were 0,
+  because it was resolved against the actor. `@class`, `@cl`, and `@item` now work as the preview
+  shows.
 - **Adding or changing an entry in a sheet section no longer jumps the sheet back to the top of
   the tab.** Sections from the shared sheet kit now restore the scroll position once they have
   drawn.

@@ -28,7 +28,8 @@ const TEMPLATE_PATH = `modules/${MODULE_ID}/src/templates/defense-entries.hbs`;
  * derived from the entry itself. `enabled` is opt-out — entries written before it
  * existed have no such key and count as enabled (see isEntryEnabled).
  *
- * Amount supports formulas using actor roll data variables (e.g. @cl, @abilities.con.mod, etc.)
+ * Amount supports formulas: item entries resolve against the item's roll data (@class, @cl, @item),
+ * API entries against the actor's.
  *
  * Actor flag: flags.pf1-defense-manager.apiDefenses = [
  *   { id: "unique-id", source: "Resist Energy", category: "eres", amount: "10", types: ["fire",""], operator: true, stacking: false },
@@ -259,7 +260,7 @@ function defenseKey(entry) {
  * Recalculation Engine
  * ============================================================ */
 
-/** Resolve a formula string to a number using actor roll data. */
+/** Resolve a formula string to a number against the given roll data. */
 function resolveAmount(formula, rollData) {
   if (typeof formula === "number") return formula;
   const str = String(formula ?? "0").trim();
@@ -304,10 +305,12 @@ function buildDefenses(actor) {
 
   for (const item of actor.items) {
     if (!isItemActive(item)) continue;
-    const defs = getItemDefenses(item);
+    const defs = getItemDefenses(item).filter(isEntryEnabled);
+    if (!defs.length) continue;
+    // Item roll data carries @class, @cl, and @item, which actor roll data lacks
+    const itemRollData = item.getRollData();
     for (const d of defs) {
-      if (!isEntryEnabled(d)) continue;
-      allEntries.push({ ...d, _resolved: resolveAmount(d.amount, rollData), _max: resolveMax(d.max, rollData), _source: item.name });
+      allEntries.push({ ...d, _resolved: resolveAmount(d.amount, itemRollData), _max: resolveMax(d.max, itemRollData), _source: item.name });
     }
   }
 

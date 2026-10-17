@@ -21,7 +21,7 @@
   "DM.Field.Enable": "Enable",
   "DM.Field.Bypass": "Bypassed By",
   "DM.Field.DamageType": "Damage Type",
-  "DM.Field.AmountHint": "A number or a formula using actor roll data (e.g. @cl, 10 + @abilities.con.mod).",
+  "DM.Field.AmountHint": "A number or a formula using item roll data (e.g. @class.level, @cl, 10 + @abilities.con.mod).",
   "DM.Field.StacksHint": "Adds on top of other entries of the same type",
   "DM.Field.CritImmNote": "Immune to critical hits and to precision damage (sneak attack). Precision immunity is added to the actor's Damage Immunity trait; the critical half is published for other modules to read — pf1-critical-effects marks the Critical Effect button on attack cards against this creature.",
   "DM.Field.Conditions": "Condition Immunities",
