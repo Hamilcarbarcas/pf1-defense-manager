@@ -29,6 +29,7 @@
       {{#each defenses}}
       <a class="dm-tab{{#unless this.enabled}} dm-tab-disabled{{/unless}}" data-index="{{@index}}">
         <span class="dm-tab-label">{{this.label}}</span>
+        {{#if this.chooseOn}}<i class="fa-solid fa-hand-pointer dm-tab-choice" data-tooltip="{{localize "DM.Field.ChooseHint"}}"></i>{{/if}}
         <i class="fa-solid fa-trash dm-tab-delete" data-index="{{@index}}" data-tooltip="{{localize "DM.Control.DeleteEntry"}}"></i>
       </a>
       {{/each}}
@@ -170,6 +171,39 @@
           {{/if}}
         </div>
       </div>
+      {{/if}}
+
+      {{!-- Chosen type: the Damage Type above is the fallback; the picked list is what the
+            create-time prompt offers. --}}
+      {{#if canChoose}}
+      <div class="form-group">
+        <label>{{localize "DM.Field.Choose"}}</label>
+        <div class="form-fields">
+          <label class="checkbox">
+            <input type="checkbox" data-dm="choose" data-index="{{@index}}" {{#if chooseOn}}checked{{/if}} />
+            {{localize "DM.Field.ChooseHint"}}
+          </label>
+          {{#if rechoose}}
+          <button type="button" class="dm-rechoose" data-index="{{@index}}">
+            <i class="fa-solid fa-hand-pointer" inert></i> {{localize "DM.Control.Rechoose"}}
+          </button>
+          {{/if}}
+        </div>
+      </div>
+      {{#if chooseOn}}
+      <div class="form-group stacked dm-choice">
+        <label>{{localize "DM.Field.ChooseFrom"}}</label>
+        <div class="dm-choice-types">
+          {{#each choiceTypes}}
+          <label class="checkbox">
+            <input type="checkbox" data-dm="choiceType" data-index="{{@../index}}" value="{{id}}" {{#if checked}}checked{{/if}} />
+            {{label}}
+          </label>
+          {{/each}}
+        </div>
+        <p class="notes">{{localize "DM.Field.ChooseNote"}}</p>
+      </div>
+      {{/if}}
       {{/if}}
 
       {{#if amountAfter}}{{> dmAmount}}{{/if}}

@@ -71,5 +71,13 @@
   "DM.Control.Delete": "Delete",
   "DM.Control.DeleteEntry": "Delete this defense",
   "DM.Control.Add": "Add Defense",
-  "DM.Control.EditConditions": "Choose conditions"
+  "DM.Control.EditConditions": "Choose conditions",
+  "DM.Control.Rechoose": "Choose again",
+
+  "DM.Field.Choose": "Chosen type",
+  "DM.Field.ChooseHint": "Chosen when added to an actor",
+  "DM.Field.ChooseFrom": "Choose from",
+  "DM.Field.ChooseNote": "The Damage Type above is the default pick.",
+  "DM.Choice.Title": "Choose – {item} – {actor}",
+  "DM.Choice.Confirm": "Confirm"
 }

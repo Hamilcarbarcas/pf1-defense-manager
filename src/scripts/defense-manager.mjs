@@ -115,6 +115,21 @@ function entryConditions(entry) {
   return Array.isArray(list) ? list.filter(Boolean) : [];
 }
 
+/* Chosen types. DESIGN.md §2
+ *
+ * An Energy Resist, Damage Immunity, or Damage Vulnerability entry can carry `choice: [type, …]`,
+ * the types it may take. Its own `types[0]` is the fallback. The item asks once, right after it is
+ * created on an actor, then is stamped `choicesMade` so copies keep their pick.
+ */
+const CHOICE_CATEGORIES = new Set(["eres", "di", "dv"]);
+const CHOICE_STAMP = "choicesMade";
+
+/** An entry's allowed types, or [] when it is not a choice. */
+function entryChoice(entry) {
+  if (!CHOICE_CATEGORIES.has(entry?.category) || !Array.isArray(entry.choice)) return [];
+  return entry.choice.filter(Boolean);
+}
+
 /* Defense overrides. DESIGN.md §1
  *
  * Weakens this creature's own defenses against every attack: Aura of Faith making attacks on
@@ -715,6 +730,32 @@ function getConditionSelector() {
   return ConditionSelector;
 }
 
+/** The types a choosable category picks from: energy for resistance, any damage type otherwise. */
+function choiceTypeList(category, options) {
+  return category === "eres" ? options.energyTypes : options.damageTypes;
+}
+
+/**
+ * Panel data for the chosen-type controls.
+ *
+ * @param {object} entry
+ * @param {object} options Output of buildTypeOptions().
+ * @param {boolean} owned Whether the item is on an actor, where a pick can be made again.
+ */
+function choiceFields(entry, options, owned) {
+  const canChoose = CHOICE_CATEGORIES.has(entry.category);
+  const chooseOn = canChoose && Array.isArray(entry.choice);
+  const allowed = new Set(entryChoice(entry));
+  return {
+    canChoose,
+    chooseOn,
+    rechoose: chooseOn && owned && allowed.size > 0,
+    choiceTypes: chooseOn
+      ? choiceTypeList(entry.category, options).map((t) => ({ ...t, checked: allowed.has(t.id) }))
+      : [],
+  };
+}
+
 /** A freshly added entry — DR 5/magic is the most common thing anyone wants. */
 function newEntry() {
   return { name: "", enabled: true, category: "dr", amount: "5", types: ["magic", ""], operator: true, stacking: false };
@@ -747,6 +788,7 @@ Hooks.on("renderItemSheet", (app, html, data) => {
       })),
       overrideTypes: d.category === OVERRIDE ? overrideTypeChoices(d, typeOptions) : [],
       ...panelFields(d.category, d.mode),
+      ...choiceFields(d, typeOptions, !!item.actor),
     })),
     ...typeOptions,
   };
@@ -835,6 +877,8 @@ Hooks.on("renderItemSheet", (app, html, data) => {
       case "type":
         entry.category = el.value;
         needsRender = true;
+        // Allowed types belong to the old category's list.
+        delete entry.choice;
         if (el.value !== OVERRIDE) {
           delete entry.mode;
           delete entry.max;
@@ -893,6 +937,19 @@ Hooks.on("renderItemSheet", (app, html, data) => {
       case "stacking":
         entry.stacking = el.checked;
         break;
+      case "choose":
+        // On: every energy type, the usual "an energy type of your choice".
+        if (el.checked) entry.choice = typeOptions.energyTypes.map((t) => t.id);
+        else delete entry.choice;
+        needsRender = true;
+        break;
+      case "choiceType": {
+        const allowed = new Set(entryChoice(entry));
+        if (el.checked) allowed.add(el.value);
+        else allowed.delete(el.value);
+        entry.choice = choiceTypeList(entry.category, typeOptions).map((t) => t.id).filter((id) => allowed.has(id));
+        break;
+      }
       default:
         return;
     }
@@ -943,6 +1000,13 @@ Hooks.on("renderItemSheet", (app, html, data) => {
         await setItemDefenses(item, current);
       },
     }).render({ force: true });
+  });
+
+  // Ask again for every chosen type on this actor's copy.
+  section.find(".dm-rechoose").on("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    queueChoices(item, { again: true });
   });
 
   // Delete a defense, from its tab's icon. stopPropagation keeps the tab from also switching.
@@ -1001,6 +1065,104 @@ function wireCollapse(app, section, count) {
     title: game.i18n.localize("DM.Section.Toggle"),
   });
 }
+
+/* ============================================================
+ * Chosen types — create-time prompt (DESIGN.md §2)
+ * ============================================================ */
+
+const CATEGORY_KEYS = { eres: "Eres", di: "Di", dv: "Dv" };
+
+const isPile = (actor) => !!foundry.utils.getProperty(actor, "flags.item-piles.data.enabled");
+
+/**
+ * Ask for every chosen type on an actor's item, then stamp it.
+ *
+ * @param {Item} item
+ * @param {object} [opts]
+ * @param {boolean} [opts.again] Ask even though the item is already stamped.
+ */
+async function promptChoices(item, { again = false } = {}) {
+  const actor = item.actor;
+  if (!actor?.items.has(item.id)) return;
+  if (!again && item.getFlag(MODULE_ID, CHOICE_STAMP)) return;
+
+  const defenses = getItemDefenses(item);
+  const asks = defenses.map((entry, index) => ({ entry, index, allowed: entryChoice(entry) })).filter((a) => a.allowed.length);
+  if (!asks.length) return;
+
+  const options = buildTypeOptions();
+  const esc = foundry.utils.escapeHTML;
+  const rows = asks.map(({ entry, index, allowed }) => {
+    const head = game.i18n.localize(`DM.Category.${CATEGORY_KEYS[entry.category]}`);
+    const amount = entry.category === "eres" ? ` ${String(entry.amount ?? "").trim() || 0}` : "";
+    const label = String(entry.name ?? "").trim() || `${head}${amount}`;
+    const preset = allowed.includes(entry.types?.[0]) ? entry.types[0] : allowed[0];
+    const opts = allowed
+      .map((id) => `<option value="${esc(id)}" ${id === preset ? "selected" : ""}>${esc(typeLabel(id, options))}</option>`)
+      .join("");
+    return `
+      <div class="form-group">
+        <label>${esc(label)}</label>
+        <div class="form-fields"><select name="dm-choice-${index}">${opts}</select></div>
+      </div>`;
+  });
+
+  const form = await foundry.applications.api.DialogV2.wait({
+    window: {
+      title: game.i18n.format("DM.Choice.Title", { item: item.name, actor: actor.name }),
+      icon: "fa-solid fa-hand-pointer",
+    },
+    position: { width: 360 },
+    content: rows.join(""),
+    buttons: [
+      {
+        action: "ok",
+        label: game.i18n.localize("DM.Choice.Confirm"),
+        icon: "fa-solid fa-check",
+        default: true,
+        callback: (_event, button) => new FormData(button.form),
+      },
+    ],
+    rejectClose: false,
+  });
+
+  // Closed: every entry keeps its fallback, and the item is stamped all the same.
+  if (form) {
+    for (const { entry, index, allowed } of asks) {
+      const pick = form.get(`dm-choice-${index}`);
+      if (allowed.includes(pick)) entry.types = [pick, entry.types?.[1] ?? ""];
+    }
+  }
+  if (!actor.items.has(item.id)) return;
+  await item.update({
+    [`flags.${MODULE_ID}.defenses`]: JSON.stringify(defenses),
+    [`flags.${MODULE_ID}.${CHOICE_STAMP}`]: true,
+  });
+}
+
+// One dialog at a time: a race drop creates the race, then its linked traits.
+let choiceQueue = Promise.resolve();
+
+function queueChoices(item, opts) {
+  choiceQueue = choiceQueue
+    .then(() => promptChoices(item, opts))
+    .catch((err) => console.error(`${MODULE_ID} | choosing defense types for ${item.name} failed`, err));
+}
+
+// Fresh from a compendium or the world: no stamp. A copy from another actor carries it.
+Hooks.on("createItem", (item, _options, userId) => {
+  if (game.user.id !== userId) return;
+  const actor = item.actor;
+  if (!actor || isPile(actor) || item.getFlag(MODULE_ID, CHOICE_STAMP)) return;
+  if (!getItemDefenses(item).some((d) => entryChoice(d).length)) return;
+  queueChoices(item);
+});
+
+// A world or compendium item made from an actor's copy asks again on its next use.
+Hooks.on("preCreateItem", (item) => {
+  if (item.parent || !item.getFlag(MODULE_ID, CHOICE_STAMP)) return;
+  item.updateSource({ [`flags.${MODULE_ID}.-=${CHOICE_STAMP}`]: null });
+});
 
 /* ============================================================
  * Hooks — Auto Recalc

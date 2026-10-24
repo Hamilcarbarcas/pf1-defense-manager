@@ -10,6 +10,11 @@
 ## Unreleased
 
 ### Added
+- **Chosen Types.** An Energy Resist, Dmg Immunity, or Dmg Vulnerability entry can be marked as
+  chosen, with a list of allowed types. When the item is added to an actor from a compendium or the
+  world (dropped, a race's linked trait, a class feature on level-up), the person adding it picks
+  the type, defaulting to the entry's own. The item is then stamped so copies on other actors keep
+  the pick. **Choose again** on an actor's copy asks again. Item piles are skipped.
 - **Defense Override.** A new entry type that weakens the creature's own defenses against every
   attack: DR, ER, or Hardness **Bypass** (ignore that defense, optionally only up to a maximum) and
   DR, ER, or Hardness **Reduction** (lower it by an amount). A DR Bypass treats attacks as having

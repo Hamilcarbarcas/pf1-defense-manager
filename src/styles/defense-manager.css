@@ -169,3 +169,29 @@
   font-size: 11px;
   margin: 6px 0 0;
 }
+
+/* Chosen type: a hand on the tab, and the allowed-type checklist in the panel. */
+.defense-manager-section .dm-tab-choice {
+  flex: 0 0 auto;
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.defense-manager-section .dm-choice-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.15rem 0.5rem;
+}
+
+.defense-manager-section .dm-choice-types label.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.defense-manager-section .dm-rechoose {
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
+}

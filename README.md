@@ -13,6 +13,7 @@ A Foundry VTT module for the PF1 system that provides a unified interface for ma
 - **Damage Vulnerability** — Vulnerability to a damage type (no amount needed).
 - **Condition Immunity** — Immunity to conditions (bleed, paralyzed, poison, sleep, stunned, …). The entry holds a *list*, picked through PF1's own condition selector — the same checkbox list, search filter and custom-entry box the actor sheet opens, reached from a pencil beside the entry's tags. Every Condition Immunity entry on the actor is merged into `system.traits.ci`, so the actor sheet's Condition Immunities row fills itself in and manual entry there is no longer needed.
 - **Critical Immunity** — Designates the creature immune to critical hits *and* to precision damage, the way undead, constructs, oozes, elementals, plants and swarms are in core PF1. The precision half is expressible natively and goes onto the actor's Damage Immunity trait; the critical half has no native home in PF1 v11 at all, so it is published through the API for other modules to read. [pf1-critical-effects](https://github.com/Hamilcarbarcas/pf1-critical-effects) reads it and marks the **Critical Effect** button on attack cards against that creature — a warning, not a lock: the GM can still resolve a critical against it. Takes no amount, no damage type and no stacking; it is a designation, not a quantity.
+- **Chosen Types** – An energy resistance, immunity, or vulnerability can be marked as chosen: the item asks which type when it is added to an actor, defaulting to the entry's own type. See [Chosen Types](#chosen-types).
 - **Defense Override** – Weakens the creature's *own* defenses against every attack: ignore a DR type, energy resistance, or hardness (optionally only up to a maximum), or reduce one by an amount. A paladin's Aura of Faith, shared to nearby enemies, is a DR Bypass for Good. See [Defense Override](#defense-override).
 - **Formula Support** – Amount fields accept formulas using the granting item's roll data, so `@class.level` (the item's associated class), `@cl`, and `@item` work beside actor data like `@abilities.con.mod`. API entries have no item and use actor roll data. Resolved via `RollPF.safeRollSync`.
 - **Little-Helper Integration** — Amount inputs use the `formula` CSS class, so the [little-helper](https://github.com/dmrickey/fvtt-ckl-roll-bonuses) tooltip (`= #`) appears automatically when formulas are entered.
@@ -44,6 +45,14 @@ A **Condition Immunity** entry opens PF1's own condition selector — the pencil
 A **Critical Immunity** entry has no fields of its own — the whole panel is a note describing what it does. Add one to whatever grants the immunity (an undead's racial traits, a fortification enchantment) and it takes effect while that item is active, like any other entry. It is the one category with no native PF1 field behind it: v11 models critical immunity nowhere, so the module publishes the designation through its API instead. `precision` shows up in the actor's Damage Immunity list because that half *is* native.
 
 > **Known PF1 limitation.** The system zeroes a damage instance for an immunity only when *every* damage type on that instance matches — so precision immunity catches a damage part tagged `precision` on its own, but not one tagged `piercing` **and** `precision`. Tag sneak-attack damage as precision alone.
+
+### Chosen Types
+
+For "resistance 5 against an energy type of your choice": on an **Energy Resist**, **Dmg Immunity**, or **Dmg Vulnerability** entry, tick **Chosen type**. A checklist of types appears, all energy types to start; untick any that aren't allowed. The entry's **Damage Type** is the default pick, and its tab shows a hand icon.
+
+When the item is added to an actor from a compendium or the Items directory, however it gets there (dropped on the sheet, a race's linked trait, a class feature on level-up), the person adding it is asked which type each chosen entry takes. Closing the dialog keeps the defaults. A copy from another actor keeps its pick and doesn't ask. Item piles never ask.
+
+To change a pick later, open the actor's copy and click **Choose again** on the entry.
 
 ### Defense Override
 
