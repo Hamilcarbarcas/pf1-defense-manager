@@ -8,8 +8,9 @@
  * ============================================================ */
 
 import { makeCollapsible } from "../common/sheet/collapse.mjs";
+import { MODULE_ID, getItemDefenses, isEntryEnabled } from "./shared.mjs";
+import { TEMP_HP, LOCK_UNITS, tempHpApi, tempHpEntryLabel, tempHpEntryKey, newTempHpFields } from "./temp-hp.mjs";
 
-const MODULE_ID = "pf1-defense-manager";
 const TEMPLATE_PATH = `modules/${MODULE_ID}/src/templates/defense-entries.hbs`;
 
 /* ---- Flag Data Structure ----
@@ -40,16 +41,6 @@ const TEMPLATE_PATH = `modules/${MODULE_ID}/src/templates/defense-entries.hbs`;
  * Helpers
  * ============================================================ */
 
-function getItemDefenses(item) {
-  const raw = item.getFlag(MODULE_ID, "defenses");
-  if (!raw) return [];
-  if (typeof raw === "string") {
-    try { return JSON.parse(raw); } catch { return []; }
-  }
-  // Legacy: migrate old array/object format
-  return Array.isArray(raw) ? [...raw] : Object.values(raw);
-}
-
 function getApiDefenses(actor) {
   const raw = actor.getFlag(MODULE_ID, "apiDefenses");
   if (!raw) return [];
@@ -73,11 +64,6 @@ function getApiDefenses(actor) {
  */
 async function setItemDefenses(item, defenses, { render = true } = {}) {
   await item.update({ [`flags.${MODULE_ID}.defenses`]: JSON.stringify(defenses) }, { render });
-}
-
-/** Entries predating the `enabled` field have no such key and are live. */
-function isEntryEnabled(entry) {
-  return entry?.enabled !== false;
 }
 
 /* Critical immunity.
@@ -591,6 +577,8 @@ function entryLabel(entry, index, options) {
     }
     case OVERRIDE:
       return overrideLabel(entry, options);
+    case TEMP_HP:
+      return tempHpEntryLabel(entry);
     default:
       return fallback;
   }
@@ -659,6 +647,14 @@ function defaultOverrideType(mode) {
 function panelFields(category, mode) {
   const bare = category === CRIT_IMMUNITY || category === CONDITION_IMMUNITY;
   const override = category === OVERRIDE;
+  // Temp HP has an amount and its own controls; nothing to type or stack.
+  if (category === TEMP_HP) {
+    return {
+      showTypes: false, showAmount: true, amountBefore: false, amountAfter: true,
+      showStacking: false, showMax: false, isOverride: false, isCritImmunity: false,
+      isConditionImmunity: false, isTempHp: true,
+    };
+  }
   // A bypass has a ceiling instead of an amount, and nothing to stack.
   const bypass = override && isBypassMode(mode);
   // Immunity / vulnerability are all-or-nothing, so no amount to enter.
@@ -756,6 +752,23 @@ function choiceFields(entry, options, owned) {
   };
 }
 
+/** Panel data for a Temporary HP entry's controls. DESIGN.md §3.5 */
+function tempHpFields(item, entry) {
+  if (entry.category !== TEMP_HP) return {};
+  const lock = entry.lock ?? {};
+  const pick = (ids, current, prefix) => ids.map((id) => ({
+    id, label: game.i18n.localize(`${prefix}.${id}`), selected: id === current,
+  }));
+  return {
+    keyPlaceholder: tempHpEntryKey(item, { ...entry, key: "" }),
+    lastsChoices: pick(["active", "spent"], entry.lasts ?? "active", "DM.TempHp.Lasts"),
+    lockValue: Number(lock.value) || 0,
+    lockUnits: pick(Object.keys(LOCK_UNITS), lock.unit ?? "minute", "DM.TempHp.Unit"),
+    lockFroms: pick(["end", "grant"], lock.from ?? "end", "DM.TempHp.From"),
+    lockOn: (Number(lock.value) || 0) > 0,
+  };
+}
+
 /** A freshly added entry — DR 5/magic is the most common thing anyone wants. */
 function newEntry() {
   return { name: "", enabled: true, category: "dr", amount: "5", types: ["magic", ""], operator: true, stacking: false };
@@ -789,7 +802,10 @@ Hooks.on("renderItemSheet", (app, html, data) => {
       overrideTypes: d.category === OVERRIDE ? overrideTypeChoices(d, typeOptions) : [],
       ...panelFields(d.category, d.mode),
       ...choiceFields(d, typeOptions, !!item.actor),
+      ...tempHpFields(item, d),
     })),
+    // Temp HP is granted when a buff turns on; nothing else has that moment.
+    isBuff: item.type === "buff",
     ...typeOptions,
   };
 
@@ -883,8 +899,18 @@ Hooks.on("renderItemSheet", (app, html, data) => {
           delete entry.mode;
           delete entry.max;
         }
+        if (el.value !== TEMP_HP) {
+          delete entry.key;
+          delete entry.lasts;
+          delete entry.lock;
+        }
         // Reset to sensible defaults when switching category
-        if (el.value === OVERRIDE) {
+        if (el.value === TEMP_HP) {
+          entry.amount = "0";
+          entry.types = ["", ""];
+          entry.stacking = false;
+          Object.assign(entry, newTempHpFields());
+        } else if (el.value === OVERRIDE) {
           entry.mode = OVERRIDE_MODES[0];
           entry.types = [defaultOverrideType(entry.mode), ""];
           entry.amount = "0";
@@ -942,6 +968,23 @@ Hooks.on("renderItemSheet", (app, html, data) => {
         if (el.checked) entry.choice = typeOptions.energyTypes.map((t) => t.id);
         else delete entry.choice;
         needsRender = true;
+        break;
+      case "key":
+        entry.key = String(el.value).trim();
+        break;
+      case "lasts":
+        entry.lasts = el.value;
+        break;
+      case "lockValue":
+        entry.lock = { ...newTempHpFields().lock, ...entry.lock, value: Math.max(0, Number(el.value) || 0) };
+        // Shows or hides the lock icon on the tab.
+        needsRender = true;
+        break;
+      case "lockUnit":
+        entry.lock = { ...newTempHpFields().lock, ...entry.lock, unit: el.value };
+        break;
+      case "lockFrom":
+        entry.lock = { ...newTempHpFields().lock, ...entry.lock, from: el.value };
         break;
       case "choiceType": {
         const allowed = new Set(entryChoice(entry));
@@ -1443,6 +1486,7 @@ Hooks.once("ready", () => {
 
   // Expose API
   const api = new DefenseManagerAPI();
+  api.tempHp = tempHpApi;
   game.modules.get(MODULE_ID).api = api;
   game.defenseManager = api;
 });

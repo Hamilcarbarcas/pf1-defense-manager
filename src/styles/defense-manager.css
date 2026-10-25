@@ -195,3 +195,23 @@
   width: auto;
   white-space: nowrap;
 }
+
+/* Temporary HP: the lock's number stays narrow beside its two selects. */
+.defense-manager-section .dm-temphp-lock-fields input[type="number"] {
+  flex: 0 0 4em;
+}
+
+/* Temporary HP tooltip, on the condition and the HP readout. */
+.dm-temphp-tooltip {
+  text-align: left;
+}
+
+.dm-temphp-tooltip ul {
+  margin: 0.15em 0 0;
+  padding-left: 1.1em;
+}
+
+.dm-temphp-tooltip .dm-temphp-lock {
+  font-style: italic;
+  opacity: 0.8;
+}

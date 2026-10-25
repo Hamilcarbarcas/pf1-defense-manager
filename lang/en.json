@@ -79,5 +79,32 @@
   "DM.Field.ChooseFrom": "Choose from",
   "DM.Field.ChooseNote": "The Damage Type above is the default pick.",
   "DM.Choice.Title": "Choose – {item} – {actor}",
-  "DM.Choice.Confirm": "Confirm"
+  "DM.Choice.Confirm": "Confirm",
+
+  "DM.Category.TempHp": "Temporary HP",
+  "DM.Tab.TempHp": "Temp HP",
+  "DM.Condition.TempHp": "Temporary HP",
+
+  "DM.TempHp.Field.Key": "Key",
+  "DM.TempHp.Field.KeyHint": "Same key doesn't stack: the higher wins. Blank uses the buff's tag.",
+  "DM.TempHp.Field.Lasts": "Lasts",
+  "DM.TempHp.Lasts.active": "While the buff is active",
+  "DM.TempHp.Lasts.spent": "Until spent",
+  "DM.TempHp.Field.Lock": "Re-grant lock",
+  "DM.TempHp.Field.LockHint": "0 for none. A locked buff still turns on, without temp HP.",
+  "DM.TempHp.Unit.round": "rounds",
+  "DM.TempHp.Unit.minute": "minutes",
+  "DM.TempHp.Unit.hour": "hours",
+  "DM.TempHp.From.end": "after it ends",
+  "DM.TempHp.From.grant": "after the grant",
+
+  "DM.TempHp.Heading": "Temporary Hit Points",
+  "DM.TempHp.Unsourced": "Unsourced",
+  "DM.TempHp.Locked": "{source} – locked {time}",
+  "DM.TempHp.Withheld": "{source}: no temporary HP, locked for {time}.",
+  "DM.TempHp.Prompt.Title": "Temporary HP – {name}",
+  "DM.TempHp.Prompt.Amount": "Amount",
+  "DM.TempHp.Prompt.Source": "Source",
+  "DM.TempHp.Prompt.SourcePlaceholder": "Optional",
+  "DM.TempHp.Prompt.Apply": "Apply"
 }

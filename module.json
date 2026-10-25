@@ -19,6 +19,13 @@
         "id": "pf1",
         "type": "system"
       }
+    ],
+    "conflicts": [
+      {
+        "id": "pf1-temp-hp-manager",
+        "type": "module",
+        "reason": "PF1 Defense Manager tracks temporary HP sources itself. Running both splits the bookkeeping."
+      }
     ]
   },
   "esmodules": [

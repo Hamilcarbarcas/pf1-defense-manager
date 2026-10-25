@@ -15,6 +15,7 @@ A Foundry VTT module for the PF1 system that provides a unified interface for ma
 - **Critical Immunity** — Designates the creature immune to critical hits *and* to precision damage, the way undead, constructs, oozes, elementals, plants and swarms are in core PF1. The precision half is expressible natively and goes onto the actor's Damage Immunity trait; the critical half has no native home in PF1 v11 at all, so it is published through the API for other modules to read. [pf1-critical-effects](https://github.com/Hamilcarbarcas/pf1-critical-effects) reads it and marks the **Critical Effect** button on attack cards against that creature — a warning, not a lock: the GM can still resolve a critical against it. Takes no amount, no damage type and no stacking; it is a designation, not a quantity.
 - **Chosen Types** – An energy resistance, immunity, or vulnerability can be marked as chosen: the item asks which type when it is added to an actor, defaulting to the entry's own type. See [Chosen Types](#chosen-types).
 - **Defense Override** – Weakens the creature's *own* defenses against every attack: ignore a DR type, energy resistance, or hardness (optionally only up to a maximum), or reduce one by an amount. A paladin's Aura of Faith, shared to nearby enemies, is a DR Bypass for Good. See [Defense Override](#defense-override).
+- **Temporary HP** – Tracks where a creature's temporary hit points came from, as named pools. A buff can grant them while it's active, optionally locked against being granted again too soon (Unchained Rage's one minute). A **Temporary HP** condition lists every pool when you hover it. See [Temporary HP](#temporary-hp).
 - **Formula Support** – Amount fields accept formulas using the granting item's roll data, so `@class.level` (the item's associated class), `@cl`, and `@item` work beside actor data like `@abilities.con.mod`. API entries have no item and use actor roll data. Resolved via `RollPF.safeRollSync`.
 - **Little-Helper Integration** — Amount inputs use the `formula` CSS class, so the [little-helper](https://github.com/dmrickey/fvtt-ckl-roll-bonuses) tooltip (`= #`) appears automatically when formulas are entered.
 - **Stacking Rules** — Each entry can be marked as stacking. Non-stacking entries of the same type use the highest value; stacking entries add together on top.
@@ -30,7 +31,7 @@ A Foundry VTT module for the PF1 system that provides a unified interface for ma
 3. Find the **Granted Defenses** section (below script calls if present). It is collapsible — click the header to expand it. The header's shield icon is the control: full strength when open, dimmed when closed, with the entry count badged on the right. A section starts open only on items that already have defenses; the rest start collapsed. The choice lasts as long as the sheet stays open and is not saved to the item.
 4. Click the **+** tab to add an entry. Each defense on the item is one tab; click a tab to edit that defense.
 5. Optionally give it a **Name** — this titles the tab. Leave it blank to let the tab describe itself.
-6. Choose a **Type** (DR, Energy Resist, Dmg Immunity, Dmg Vulnerability, Hardness, Critical Immunity, Condition Immunity, Defense Override).
+6. Choose a **Type** (DR, Energy Resist, Dmg Immunity, Dmg Vulnerability, Hardness, Critical Immunity, Condition Immunity, Defense Override, and on buffs, Temporary HP).
 7. Enter an **Amount** (number or formula). Immunities and vulnerabilities have no amount field. On a DR entry it comes first, the way DR is written (`DR 10/magic`).
 8. Configure **Bypassed By** / **Damage Type** (two selects and an and/or operator for DR; one select otherwise; none for Hardness or Critical Immunity). A **Condition Immunity** entry instead shows its conditions as tags with a pencil that opens the picker.
 9. Check **Stacks** if this entry should stack with others of the same type.
@@ -85,6 +86,28 @@ Bypasses apply first, comparing their maximum against the defense as written; re
 **Example: Aura of Faith.** On the paladin, make an Aura of Faith buff with a 10 ft enemy aura ([PF1 Auras](https://github.com/Hamilcarbarcas/pf1-auras)), switched off with **Share while off** ticked, and give it a Defense Override: DR Bypass, Good. Enemies within 10 ft get the buff, and every attack against them counts as good. The buff stays off on the paladin, so attacks against the paladin are unaffected.
 
 For effects that belong to the *attacker* instead (an adamantine-like weapon property, a spell that pierces resistance), use the **Defense Bypass** roll-bonus from [PF1 Magic Equipment](https://github.com/Hamilcarbarcas/pf1-magic-equipment). It offers the same overrides, applied only to that creature's attacks.
+
+### Temporary HP
+
+The creature's temporary hit points are split into **pools**, one per source, that always add up to the number on the sheet. Damage spends them in this order:
+
+1. **Unsourced** temp HP: anything added without a source (typed into the sheet, added by another module or a script).
+2. Other temp HP not tied to a buff, oldest first (such as a named entry from the condition, below).
+3. Temp HP from buffs, the one whose buff runs out soonest first.
+
+**From a buff.** On a buff's **Granted Defenses**, choose the **Temporary HP** type:
+
+- **Amount:** a number or formula, rolled once when the buff turns on. `@item.level` and the actor's own data work, as for any entry.
+- **Key:** two grants with the same key don't stack. If the new amount is higher than what's left, it replaces the pool (9/20 plus a new 15 becomes 15/15); otherwise nothing changes (16/20 stays). Blank uses the buff's tag, so the same buff always shares a key.
+- **Lasts:** *While the buff is active* (the default) removes what's left when the buff ends. *Until spent* keeps it after the buff ends.
+- **Re-grant lock:** after a grant, the same key gives no temp HP again until the lock runs out. *After it ends* starts the clock when the buff ends, *after the grant* when the temp HP is given. The buff still turns on either way; you just get a notice instead of temp HP. Unchained Rage is 1 minute, after it ends.
+
+**The condition.** A **Temporary HP** condition is on whenever the creature has temp HP and off when it runs out. Hover it on the sheet's Buffs tab, the token HUD, or Little Helper's HUD to see every pool in the order it will be spent, as `Rage 9/16` (left of what was granted), plus any running locks. The hit point tooltip on the sheet lists the pools too.
+
+- **Turning it on** by hand asks for an amount and an optional source name.
+- **Turning it off** by hand removes all of the creature's temp HP.
+
+Wounds & Vigor isn't supported.
 
 ### API
 
@@ -160,6 +183,33 @@ api.defenseSources(token);
 
 `dr` and `eres` line up with `system.traits.dr.value` / `.eres.value`; match on amount, types and
 operator.
+
+Temporary HP, at `game.defenseManager.tempHp`. Every call accepts an actor, a token, or a token
+document.
+
+```js
+const thp = game.defenseManager.tempHp;
+
+// Grant temp HP. Returns what was actually added: 0 when locked, or when the same key
+// already has more left.
+await thp.add(actor, {
+  amount: "1d10 + 5",            // number or formula; rolled against `item` if given, else the actor
+  source: "False Life",          // display name
+  key: "falseLife",              // optional; defaults to the source as a tag
+  item: buff,                    // optional buff (or its id): spent in its expiry order, removed when it ends
+  lasts: "active",               // "active" (default) | "spent": keep it after the buff ends
+  lock: { seconds: 60, from: "end" }, // optional; "end" needs `item`, otherwise the clock starts now
+});
+
+await thp.adjust(actor, "bloodDrain", 5);  // raise or lower one pool (creates it on a positive amount)
+await thp.remove(actor, "falseLife");      // remove one pool
+await thp.clear(actor);                    // remove all temp HP (locks stay)
+thp.list(actor);                           // pools, in spend order
+thp.lockRemaining(actor, "rage");          // seconds; 0 when free, Infinity while its buff is still on
+```
+
+Replaces [PF1 Temp HP Manager](https://github.com/websterguy/pf1-temp-hp-manager); the two can't
+run together.
 
 ## Compatibility
 

@@ -10,6 +10,16 @@
 ## Unreleased
 
 ### Added
+- **Temporary HP.** Replaces PF1 Temp HP Manager (the two can't run together). A creature's
+  temporary hit points are tracked as named pools that always add up to the sheet's value, spent
+  Unsourced first, then other loose pools, then buff pools soonest to expire. A buff's new
+  **Temporary HP** entry rolls an amount when it turns on and removes what's left when it ends
+  (or keeps it, with **Until spent**). The same key doesn't stack: the higher of what's left and
+  the new amount wins. A **Re-grant lock**, from the grant or from the buff's end, withholds temp
+  HP from the same key for a time without blocking the buff. A **Temporary HP** condition is on
+  while any remain; hovering it lists the pools (`Rage 9/16`) and running locks. Turning it on by
+  hand asks for an amount; turning it off removes all temp HP. API at
+  `game.defenseManager.tempHp`.
 - **Chosen Types.** An Energy Resist, Dmg Immunity, or Dmg Vulnerability entry can be marked as
   chosen, with a list of allowed types. When the item is added to an actor from a compendium or the
   world (dropped, a race's linked trait, a class feature on level-up), the person adding it picks
@@ -74,6 +84,11 @@
 - A DR entry now shows **Amount** above **Bypassed By**, the order DR is written in (DR 10/magic).
 
 ### Fixed
+- **Temporary HP no longer fails to clear when a buff ends on a token.** Every temp HP write
+  shared one options object, and Foundry writes the target's parent and update list into the
+  options it's given, so two writes at once (the pool update and the Temp HP condition) could
+  swap targets: "The key … does not exist in the Collection" or "Actor is not a valid embedded
+  Document within the ActorDelta Document", and the pool stayed. Each write now gets its own.
 - **Item formulas now see the item's own roll data.** An Amount such as
   `5 + 5 * min(1, floor(@class.level / 5))` previewed correctly but granted as if `@class` were 0,
   because it was resolved against the actor. `@class`, `@cl`, and `@item` now work as the preview
