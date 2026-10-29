@@ -82,6 +82,7 @@
 
 ### Changed
 - A DR entry now shows **Amount** above **Bypassed By**, the order DR is written in (DR 10/magic).
+- The **Granted Defenses** section is hidden on items with no defenses. A **Show N more sections** line at the foot of the Advanced tab reveals it (shared sheet kit 1.7.0).
 
 ### Fixed
 - **Temporary HP no longer fails to clear when a buff ends on a token.** Every temp HP write

@@ -1106,6 +1106,7 @@ function wireCollapse(app, section, count) {
     // null rather than 0, so an unconfigured section gets no badge element at all.
     badge: count || null,
     title: game.i18n.localize("DM.Section.Toggle"),
+    niche: true,
   });
 }
 

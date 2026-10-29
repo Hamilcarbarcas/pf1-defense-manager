@@ -28,7 +28,7 @@ A Foundry VTT module for the PF1 system that provides a unified interface for ma
 
 1. Open any supported item (buff, feat, class, race, equipment, weapon, attack).
 2. Go to the **Advanced** tab.
-3. Find the **Granted Defenses** section (below script calls if present). It is collapsible — click the header to expand it. The header's shield icon is the control: full strength when open, dimmed when closed, with the entry count badged on the right. A section starts open only on items that already have defenses; the rest start collapsed. The choice lasts as long as the sheet stays open and is not saved to the item.
+3. Find the **Granted Defenses** section (below script calls if present). On an item with no defenses it's hidden: click **Show N more sections** at the foot of the tab to reveal it. It is collapsible — click the header to expand it. The header's shield icon is the control: full strength when open, dimmed when closed, with the entry count badged on the right. A section starts open only on items that already have defenses; the rest start collapsed. The choice lasts as long as the sheet stays open and is not saved to the item.
 4. Click the **+** tab to add an entry. Each defense on the item is one tab; click a tab to edit that defense.
 5. Optionally give it a **Name** — this titles the tab. Leave it blank to let the tab describe itself.
 6. Choose a **Type** (DR, Energy Resist, Dmg Immunity, Dmg Vulnerability, Hardness, Critical Immunity, Condition Immunity, Defense Override, and on buffs, Temporary HP).
@@ -45,7 +45,7 @@ A **Condition Immunity** entry opens PF1's own condition selector — the pencil
 
 A **Critical Immunity** entry has no fields of its own — the whole panel is a note describing what it does. Add one to whatever grants the immunity (an undead's racial traits, a fortification enchantment) and it takes effect while that item is active, like any other entry. It is the one category with no native PF1 field behind it: v11 models critical immunity nowhere, so the module publishes the designation through its API instead. `precision` shows up in the actor's Damage Immunity list because that half *is* native.
 
-> **Known PF1 limitation.** The system zeroes a damage instance for an immunity only when *every* damage type on that instance matches — so precision immunity catches a damage part tagged `precision` on its own, but not one tagged `piercing` **and** `precision`. Tag sneak-attack damage as precision alone.
+> **Known PF1 limitation.** The system zeroes a damage instance for an immunity only when *every* damage type on that instance matches — so precision immunity catches a damage part tagged `precision` on its own, but not one tagged `piercing` **and** `precision`. astora-mod's damage automation closes the gap: it zeroes every instance carrying `precision` against an immune target, which its sneak attack relies on (typed as the weapon plus `precision`, so damage reduction still applies). Without it, tag precision damage as precision alone.
 
 ### Chosen Types
 
